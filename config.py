@@ -1,3 +1,9 @@
+import ctypes
+try:
+    ctypes.windll.user32.SetProcessDPIAware()
+except Exception:
+    pass
+
 import pyautogui
 
 
@@ -5,13 +11,13 @@ SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
 
 CAM_WIDTH, CAM_HEIGHT, CAM_FPS = 640, 480, 60
 
-ACTIVE_MARGIN = 0.15
+ACTIVE_MARGIN = 0.10
 
-ONE_EURO_MIN_CUTOFF = 1.0
-ONE_EURO_BETA = 0.01  
+ONE_EURO_MIN_CUTOFF = 0.6
+ONE_EURO_BETA = 0.02  
 
 MOUSE_HZ = 120
-FOLLOW_TAU = 0.03
+FOLLOW_TAU = 0.016
 
-PINCH_ON = 0.25
-PINCH_OFF = 0.45
+PINCH_ON = 0.20
+PINCH_OFF = 0.35

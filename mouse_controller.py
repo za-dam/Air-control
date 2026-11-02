@@ -1,13 +1,10 @@
-import pyautogui
+import win_mouse
 import config
 from one_euro import OneEuroFilter
 import math
 import threading
 import time
 
-
-pyautogui.PAUSE = 0
-pyautogui.FAILSAFE = False
 
 
 class MouseController() :
@@ -66,13 +63,13 @@ class MouseController() :
                         self._pos[0] + (target[0] - self._pos[0]) * a,
                         self._pos[1] + (target[1] - self._pos[1]) * a,
                     )
-                pyautogui.moveTo(round(self._pos[0]), round(self._pos[1]), _pause=False)
+                win_mouse.move_abs(round(self._pos[0]), round(self._pos[1]), self.w, self.h)
 
             if want and not self._pressed:
-                pyautogui.mouseDown(_pause=False)
+                win_mouse.left_down()
                 self._pressed = True
             elif not want and self._pressed:
-                pyautogui.mouseUp(_pause=False)
+                win_mouse.left_up()
                 self._pressed = False
 
             time.sleep(max(0.0, interval - (time.perf_counter() - now)))
@@ -81,4 +78,4 @@ class MouseController() :
         self._running = False
         self._thread.join(timeout=1)
         if self._pressed:
-            pyautogui.mouseUp(_pause=False)
+            win_mouse.left_up()
