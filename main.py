@@ -1,6 +1,8 @@
 from camera import Camera
 from hand_tracker import HandTracker
 from mouse_controller import MouseController
+import time
+
 
 
 def main() :
@@ -10,30 +12,26 @@ def main() :
     mouse = MouseController()
     ochko_status = False
 
-    while True :
+    try :
+        while True :
+            frame = camera.get_frame()
+            if frame is None :
+                break
 
-        frame = camera.get_frame()
-        if frame is None :
-            break
+            t = time.perf_counter()
+            hand = tracker.find_hand(frame)
 
-        hand_landmarks = tracker.find_hand(frame)
-        if not hand_landmarks:
-            continue
+            if hand :
+                mouse.update(tracker.get_pinch_point(hand), tracker.check_pinch(hand), t)
+            else :
+                mouse.update(None, False, t)
 
-        index_finger = tracker.get_finger_tip(hand_landmarks, "INDEX")
-        thumb = tracker.get_finger_tip(hand_landmarks, "THUMB")
-
-        if tracker.check_ok_gesture(index_finger, thumb):
-            ochko_status = True
-        else:
-            ochko_status = False
-
-        mouse.move_and_click(index_finger, is_drawing=ochko_status)
-
-        if camera.check_exit_signal():
-            break
-
-    camera.release()
+            camera.show(frame)
+            if camera.check_exit_signal() :
+                break
+    finally :
+        mouse.close()
+        camera.release()
 
 if __name__ == "__main__":
     main()

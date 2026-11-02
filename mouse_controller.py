@@ -1,38 +1,84 @@
 import pyautogui
 import config
+from one_euro import OneEuroFilter
+import math
+import threading
+import time
 
 
 pyautogui.PAUSE = 0
 pyautogui.FAILSAFE = False
 
+
 class MouseController() :
-    def __init__(self):
-        self.screen_width = config.SCREEN_WIDTH
-        self.screen_height = config.SCREEN_HEIGHT
+    def __init__(self) :
+        self.w, self.h = config.SCREEN_WIDTH, config.SCREEN_HEIGHT
+        self.fx = OneEuroFilter(config.ONE_EURO_MIN_CUTOFF, config.ONE_EURO_BETA)
+        self.fy = OneEuroFilter(config.ONE_EURO_MIN_CUTOFF, config.ONE_EURO_BETA)
 
-        self.prev_x, self.prev_y = 0, 0
-        self.is_pressing = False
+        self._lock = threading.Lock()
+        self._target = None
+        self._want_press = False
+        self._pos = None
+        self._pressed = False
+        self._running = True
 
-    def move_and_click(self, finger_coords, is_drawing):
-        if not finger_coords:
-            return
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
 
-        target_x = int(finger_coords["x"] * self.screen_width)
-        target_y = int(finger_coords["y"] * self.screen_height)
+    @staticmethod
+    def _to_active_zone(v) :
+        m = config.ACTIVE_MARGIN
+        return min(max((v - m) / (1 - 2 * m), 0.0), 1.0)
 
-        smooth_x = self.prev_x + (target_x - self.prev_x) * config.SMOOTHING
-        smooth_y = self.prev_y + (target_y - self.prev_y) * config.SMOOTHING
-        current_x, current_y = int(smooth_x), int(smooth_y)
+    def update(self, point, is_drawing, t) :
+        with self._lock:
+            if point is None:
+                self._target = None
+                self._want_press = False
+                self.fx.reset()
+                self.fy.reset()
+                return
 
-        pyautogui.moveTo(current_x, current_y, _pause=False)
+            x = self._to_active_zone(point[0]) * (self.w - 1)
+            y = self._to_active_zone(point[1]) * (self.h - 1)
+            self._target = (self.fx(x, t), self.fy(y, t))
+            self._want_press = is_drawing
 
-        self.prev_x, self.prev_y = current_x, current_y
+    def _loop(self) :
+        interval = 1.0 / config.MOUSE_HZ
+        last = time.perf_counter()
 
-        if is_drawing:
-            if not self.is_pressing:
+        while self._running:
+            now = time.perf_counter()
+            dt = now - last
+            last = now
+
+            with self._lock:
+                target, want = self._target, self._want_press
+
+            if target is not None:
+                if self._pos is None:
+                    self._pos = target
+                else:
+                    a = 1 - math.exp(-dt / config.FOLLOW_TAU)
+                    self._pos = (
+                        self._pos[0] + (target[0] - self._pos[0]) * a,
+                        self._pos[1] + (target[1] - self._pos[1]) * a,
+                    )
+                pyautogui.moveTo(round(self._pos[0]), round(self._pos[1]), _pause=False)
+
+            if want and not self._pressed:
                 pyautogui.mouseDown(_pause=False)
-                self.is_pressing = True
-        else:
-            if self.is_pressing:
+                self._pressed = True
+            elif not want and self._pressed:
                 pyautogui.mouseUp(_pause=False)
-                self.is_pressing = False
+                self._pressed = False
+
+            time.sleep(max(0.0, interval - (time.perf_counter() - now)))
+
+    def close(self):
+        self._running = False
+        self._thread.join(timeout=1)
+        if self._pressed:
+            pyautogui.mouseUp(_pause=False)
