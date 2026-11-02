@@ -14,16 +14,16 @@ class HandTracker:
             min_tracking_confidence=0.7
         )
 
+        self.is_ok_active = False
+
     def find_hand(self, frame):
         img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(img_rgb)
         
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
-
             self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
             return hand_landmarks
-        
         return None
 
     def get_finger_tip(self, hand_landmarks, finger_name):
@@ -42,7 +42,12 @@ class HandTracker:
             return False
             
         distance = math.sqrt((index_finger["x"] - thumb["x"])**2 + (index_finger["y"] - thumb["y"])**2)
-        
-        if distance < 0.04:
-            return True
-        return False
+
+        if self.is_ok_active :
+            if distance > 0.055 :
+                self.is_ok_active = False
+        else :
+            if distance < 0.035:
+                self.is_ok_active = True
+
+        return self.is_ok_active
