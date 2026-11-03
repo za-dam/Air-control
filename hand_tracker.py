@@ -35,26 +35,11 @@ class HandTracker:
         p = lm.landmark[idx]
         return p.x * self._w, p.y * self._h
 
-    def get_pinch_point(self, lm) :
+    def get_pointer(self, lm):
         H = self.mp_hands.HandLandmark
-        tx, ty = self._px(lm, H.THUMB_TIP)
         ix, iy = self._px(lm, H.INDEX_FINGER_TIP)
-        return ((tx + ix) / 2 / self._w, (ty + iy) / 2 / self._h)
+        mx, my = self._px(lm, H.MIDDLE_FINGER_TIP)
+        return ((ix + mx) / 2 / self._w, (iy + my) / 2 / self._h)
 
-    def check_pinch(self, lm):
-        H = self.mp_hands.HandLandmark
-        tx, ty = self._px(lm, H.THUMB_TIP)
-        ix, iy = self._px(lm, H.INDEX_FINGER_TIP)
-        wx, wy = self._px(lm, H.WRIST)
-        mx, my = self._px(lm, H.MIDDLE_FINGER_MCP)
-
-        hand_size = math.hypot(wx - mx, wy - my) or 1e-6
-        ratio = math.hypot(tx - ix, ty - iy) / hand_size
-
-        if self.is_pinching:
-            if ratio > config.PINCH_OFF:
-                self.is_pinching = False
-        elif ratio < config.PINCH_ON:
-            self.is_pinching = True
-            
-        return self.is_pinching
+    def get_points(self, lm):
+        return [(p.x * self._w, p.y * self._h) for p in lm.landmark]

@@ -1,5 +1,6 @@
 import ctypes
 from ctypes import wintypes
+import time
 
 _user32 = ctypes.windll.user32
 
@@ -45,3 +46,11 @@ def left_down():
 
 def left_up():
     _send(LEFTUP)
+
+RIGHTDOWN, RIGHTUP = 0x0008, 0x0010
+
+def click(button="left"):
+    down, up = (LEFTDOWN, LEFTUP) if button == "left" else (RIGHTDOWN, RIGHTUP)
+    _send(down)
+    time.sleep(0.01)
+    _send(up)
